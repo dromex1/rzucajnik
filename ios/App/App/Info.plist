@@ -45,5 +45,9 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Aplikacja wymaga dostępu do aparatu, aby zrobić zdjęcie e-papierosa do notatki.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Aplikacja wymaga dostępu do biblioteki zdjęć, aby wybrać zdjęcie e-papierosa.</string>
 </dict>
 </plist>

@@ -51,7 +51,6 @@ function OnboardingScreen({ onComplete }) {
       puffStatus: 'neutral',
     });
 
-    StorageService.setQuitDate(new Date());
     StorageService.setOnboarded();
     onComplete();
   };
@@ -364,7 +363,7 @@ function PhotoReminderModal({ onSubmit, onSkip, baseline }) {
 // Home Screen
 // ==========================================
 function HomeScreen({ onNavigate }) {
-  const quitDate = StorageService.getQuitDate();
+  const [quitDate, setQuitDateLocal] = useState(StorageService.getQuitDate());
   const settings = StorageService.getSettings();
   const elapsed = useTimer(quitDate);
   const journal = StorageService.getJournal();
@@ -447,34 +446,54 @@ function HomeScreen({ onNavigate }) {
         </div>
 
         {/* Timer Hero Card */}
-        <div className="timer-card">
-          <div className="orb orb-1"></div>
-          <div className="orb orb-2"></div>
-          <div className="orb orb-3"></div>
-          <div className="timer-label">
-            <Timer size={14} style={{ verticalAlign: 'middle', marginRight: '6px' }} />
-            Nie palisz już
+        {quitDate ? (
+          <div className="timer-card">
+            <div className="orb orb-1"></div>
+            <div className="orb orb-2"></div>
+            <div className="orb orb-3"></div>
+            <div className="timer-label">
+              <Timer size={14} style={{ verticalAlign: 'middle', marginRight: '6px' }} />
+              Nie palisz już
+            </div>
+            <div className="timer-units">
+              <div className="timer-unit">
+                <span className="timer-unit-value">{elapsed.days}</span>
+                <span className="timer-unit-label">Dni</span>
+              </div>
+              <div className="timer-unit">
+                <span className="timer-unit-value">{String(elapsed.hours).padStart(2, '0')}</span>
+                <span className="timer-unit-label">Godz</span>
+              </div>
+              <div className="timer-unit">
+                <span className="timer-unit-value">{String(elapsed.minutes).padStart(2, '0')}</span>
+                <span className="timer-unit-label">Min</span>
+              </div>
+              <div className="timer-unit">
+                <span className="timer-unit-value">{String(elapsed.seconds).padStart(2, '0')}</span>
+                <span className="timer-unit-label">Sek</span>
+              </div>
+            </div>
+            <div className="timer-motivational">{quote}</div>
           </div>
-          <div className="timer-units">
-            <div className="timer-unit">
-              <span className="timer-unit-value">{elapsed.days}</span>
-              <span className="timer-unit-label">Dni</span>
-            </div>
-            <div className="timer-unit">
-              <span className="timer-unit-value">{String(elapsed.hours).padStart(2, '0')}</span>
-              <span className="timer-unit-label">Godz</span>
-            </div>
-            <div className="timer-unit">
-              <span className="timer-unit-value">{String(elapsed.minutes).padStart(2, '0')}</span>
-              <span className="timer-unit-label">Min</span>
-            </div>
-            <div className="timer-unit">
-              <span className="timer-unit-value">{String(elapsed.seconds).padStart(2, '0')}</span>
-              <span className="timer-unit-label">Sek</span>
-            </div>
+        ) : (
+          <div className="timer-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 20px' }}>
+            <div className="orb orb-1"></div>
+            <div className="orb orb-2"></div>
+            <div className="timer-label" style={{ marginBottom: '24px' }}>Wszystko gotowe</div>
+            <button 
+              className="btn btn-primary btn-full btn-lg" 
+              onClick={() => {
+                const now = new Date();
+                StorageService.setQuitDate(now);
+                setQuitDateLocal(now);
+              }} 
+              style={{ zIndex: 10, background: 'white', color: 'var(--accent)', fontWeight: 800, letterSpacing: '0.5px' }}
+            >
+              START
+            </button>
+            <div className="timer-motivational" style={{ marginTop: '24px' }}>Rozpocznij odliczanie, kiedy będziesz gotów.</div>
           </div>
-          <div className="timer-motivational">{quote}</div>
-        </div>
+        )}
 
         {/* Stats Grid */}
         <div className="stats-grid">
