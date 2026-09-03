@@ -1,0 +1,54 @@
+name: Build iOS IPA (Sideloadly)
+
+on:
+  push:
+    branches: [ "master", "main" ]
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        
+    - name: Install dependencies
+      run: npm install
+      
+    - name: Build Web App
+      run: npm run build
+      
+    - name: Sync Capacitor
+      run: npx cap sync ios
+      
+    - name: Build Xcode Project
+      run: |
+        cd ios/App
+        # Budowanie bez cyfrowego podpisu (idealne dla Sideloadly)
+        xcodebuild -project App.xcodeproj \
+          -scheme App \
+          -configuration Release \
+          -sdk iphoneos \
+          CODE_SIGNING_ALLOWED=NO \
+          CODE_SIGNING_REQUIRED=NO \
+          CODE_SIGN_IDENTITY="" \
+          clean build \
+          CONFIGURATION_BUILD_DIR="$(pwd)/build/Release-iphoneos"
+
+    - name: Package IPA for Sideloadly
+      run: |
+        cd ios/App
+        mkdir -p Payload
+        cp -r build/Release-iphoneos/App.app Payload/
+        zip -qr Rzucajnik.ipa Payload
+        
+    - name: Upload IPA Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Rzucajnik-iOS-IPA
+        path: ios/App/Rzucajnik.ipa
