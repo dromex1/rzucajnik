@@ -47,9 +47,9 @@
   --radius-full: 9999px;
 
   /* Borders */
-  --border-subtle: 1px solid rgba(0,0,0,0.04);
-  --border-card: 1px solid rgba(0,0,0,0.06);
-  --border-input: 1.5px solid rgba(0,0,0,0.08);
+  --border-subtle: 1px solid rgba(0,0,0,0.06);
+  --border-card: 1.5px solid rgba(0,0,0,0.15);
+  --border-input: 1.5px solid rgba(0,0,0,0.12);
   --border-accent: 1.5px solid rgba(88,86,214,0.3);
 
   /* Shadows — layered for depth */

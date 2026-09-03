@@ -1,4 +1,6 @@
 // StorageService — localStorage persistence layer for the app
+import { auth, db } from './firebase';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 const STORAGE_KEYS = {
   QUIT_DATE: 'rzucajnik_quit_date',
   JOURNAL: 'rzucajnik_journal',
@@ -15,8 +17,43 @@ export const StorageService = {
     return d ? new Date(d) : null;
   },
 
+  async backupToCloud() {
+    if (auth && auth.currentUser) {
+       const data = {
+         quitDate: localStorage.getItem(STORAGE_KEYS.QUIT_DATE) || null,
+         journal: localStorage.getItem(STORAGE_KEYS.JOURNAL) || null,
+         settings: localStorage.getItem(STORAGE_KEYS.SETTINGS) || null,
+         onboarded: localStorage.getItem(STORAGE_KEYS.ONBOARDED) || null,
+         baseline: localStorage.getItem(STORAGE_KEYS.BASELINE_PUFFS) || null,
+         badges: localStorage.getItem(STORAGE_KEYS.BADGES) || null
+       };
+       try {
+         await setDoc(doc(db, 'users', auth.currentUser.uid), data);
+       } catch (e) { console.warn(e); }
+    }
+  },
+
+  async restoreFromCloud(uid) {
+    try {
+      const snap = await getDoc(doc(db, 'users', uid));
+      if (snap.exists()) {
+        const d = snap.data();
+        if (d.quitDate) localStorage.setItem(STORAGE_KEYS.QUIT_DATE, d.quitDate);
+        if (d.journal) localStorage.setItem(STORAGE_KEYS.JOURNAL, d.journal);
+        if (d.settings) localStorage.setItem(STORAGE_KEYS.SETTINGS, d.settings);
+        if (d.onboarded) localStorage.setItem(STORAGE_KEYS.ONBOARDED, d.onboarded);
+        if (d.baseline) localStorage.setItem(STORAGE_KEYS.BASELINE_PUFFS, d.baseline);
+        if (d.badges) localStorage.setItem(STORAGE_KEYS.BADGES, d.badges);
+        return true;
+      }
+    } catch (e) { console.warn(e); }
+    return false;
+  },
+
   setQuitDate(date) {
-    localStorage.setItem(STORAGE_KEYS.QUIT_DATE, date.toISOString());
+    if (date) localStorage.setItem(STORAGE_KEYS.QUIT_DATE, date.toISOString());
+    else localStorage.removeItem(STORAGE_KEYS.QUIT_DATE);
+    this.backupToCloud();
   },
 
   // ===== Journal Entries =====
@@ -33,6 +70,7 @@ export const StorageService = {
       ...entry,
     });
     localStorage.setItem(STORAGE_KEYS.JOURNAL, JSON.stringify(journal));
+    this.backupToCloud();
     return journal;
   },
 
@@ -54,6 +92,7 @@ export const StorageService = {
 
   setSettings(settings) {
     localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
+    this.backupToCloud();
   },
 
   // ===== Onboarding =====
@@ -73,6 +112,7 @@ export const StorageService = {
 
   setBaselinePuffs(puffs) {
     localStorage.setItem(STORAGE_KEYS.BASELINE_PUFFS, puffs.toString());
+    this.backupToCloud();
   },
 
   // ===== Badges =====
@@ -86,6 +126,7 @@ export const StorageService = {
     if (!badges.includes(badgeId)) {
       badges.push(badgeId);
       localStorage.setItem(STORAGE_KEYS.BADGES, JSON.stringify(badges));
+      this.backupToCloud();
     }
     return badges;
   },

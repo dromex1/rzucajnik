@@ -7,9 +7,85 @@ import {
   AlertCircle, Check, X, Plus, Clock, Calendar, BookOpen, Zap,
   CircleDollarSign, Activity, Trophy, Star,
   RotateCcw, User, CreditCard, FileText,
-  Sparkles, HandHeart, Brain, Eye
+  Sparkles, HandHeart, Brain, Eye, Cloud, LogOut
 } from 'lucide-react';
+import { auth } from './firebase';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import './index.css';
+
+// ==========================================
+// Relapse & Auth Modals
+// ==========================================
+function LoginModal({ onClose, showToast }) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isRegistering, setIsRegistering] = useState(false);
+
+  const handleSubmit = async () => {
+    try {
+      if (isRegistering) {
+        await createUserWithEmailAndPassword(auth, email, password);
+        StorageService.backupToCloud();
+        showToast('Konto utworzone i zalogowano!');
+        onClose();
+      } else {
+        await signInWithEmailAndPassword(auth, email, password);
+        const restored = await StorageService.restoreFromCloud(auth.currentUser.uid);
+        if (restored) {
+          showToast('Zalogowano i przywrócono dane!');
+          setTimeout(() => window.location.reload(), 1000);
+        } else {
+          showToast('Zalogowano pomyślnie!');
+          onClose();
+        }
+      }
+    } catch (error) {
+      showToast('Błąd: ' + error.message);
+    }
+  };
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal">
+        <h2>{isRegistering ? 'Zarejestruj się' : 'Zaloguj się'}</h2>
+        <p style={{marginBottom: '16px'}}>Zabezpiecz swoje statystyki w chmurze.</p>
+        <div className="input-group">
+          <input type="email" className="input-field" placeholder="E-mail" value={email} onChange={e => setEmail(e.target.value)} />
+          <input type="password" className="input-field mt-sm" placeholder="Hasło" value={password} onChange={e => setPassword(e.target.value)} />
+        </div>
+        <button className="btn btn-primary btn-full mt-md" onClick={handleSubmit}>
+          {isRegistering ? 'Stwórz konto' : 'Zaloguj'}
+        </button>
+        <button className="btn btn-ghost btn-full mt-sm" onClick={() => setIsRegistering(!isRegistering)}>
+          {isRegistering ? 'Masz już konto? Zaloguj się' : 'Nie masz konta? Zarejestruj się'}
+        </button>
+        <button className="btn btn-ghost btn-full mt-sm" onClick={onClose}>Anuluj</button>
+      </div>
+    </div>
+  );
+}
+
+function RelapseModal({ onClose, moneySavedDisplay, daysSaved, onReset }) {
+  return (
+    <div className="modal-overlay">
+      <div className="modal">
+        <h2>Potknąłeś się?</h2>
+        <p style={{marginBottom: '16px', color: 'var(--text-secondary)'}}>
+          To tylko jedno potknięcie, a nie przegrana wojna! <br/><br/>
+          Zaoszczędziłeś już <b>{moneySavedDisplay} zł</b> i wytrzymałeś <b>{daysSaved} dni</b>.
+          Zaczynamy od nowa?
+        </p>
+        <button className="btn btn-primary btn-full mt-md" onClick={() => {
+          onReset();
+          onClose();
+        }}>
+          Zresetuj licznik
+        </button>
+        <button className="btn btn-ghost btn-full mt-sm" onClick={onClose}>Anuluj</button>
+      </div>
+    </div>
+  );
+}
 
 // ==========================================
 // Onboarding Screen
@@ -371,7 +447,15 @@ function HomeScreen({ onNavigate }) {
   const baseline = StorageService.getBaselinePuffs();
   const [showBreathing, setShowBreathing] = useState(false);
   const [showPhotoReminder, setShowPhotoReminder] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showRelapseModal, setShowRelapseModal] = useState(false);
+  const [user, setUser] = useState(auth.currentUser);
   const { toast, showToast } = useToast();
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((u) => setUser(u));
+    return () => unsubscribe();
+  }, []);
 
   const daysSaved = elapsed.days;
   // Real-time money counter: dailyCost per day = dailyCost/86400 per second
@@ -474,6 +558,10 @@ function HomeScreen({ onNavigate }) {
               </div>
             </div>
             <div className="timer-motivational">{quote}</div>
+            <button className="btn btn-ghost mt-md" onClick={() => setShowRelapseModal(true)} style={{ width: '100%', color: 'rgba(255,255,255,0.7)', fontSize: '14px', background: 'rgba(255,255,255,0.1)' }}>
+              <AlertCircle size={14} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
+              Potknąłem się (Zapaliłem)
+            </button>
           </div>
         ) : (
           <div className="timer-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 20px' }}>
@@ -563,7 +651,40 @@ function HomeScreen({ onNavigate }) {
           </div>
         </button>
 
+        {/* Auth Button */}
+        {user ? (
+          <button className="sos-btn" style={{ background: 'var(--bg-elevated)', border: '1px solid rgba(0,0,0,0.08)', marginTop: '12px' }} onClick={() => signOut(auth)}>
+            <LogOut size={28} color="var(--text-secondary)" />
+            <div className="sos-text">
+              <div className="sos-title" style={{ color: 'var(--text-primary)' }}>Wyloguj się</div>
+              <div className="sos-subtitle" style={{ color: 'var(--text-secondary)' }}>Zalogowano: {user.email}</div>
+            </div>
+          </button>
+        ) : (
+          <button className="sos-btn" style={{ background: 'linear-gradient(145deg, #1A1A2E 0%, #303050 100%)', marginTop: '12px' }} onClick={() => setShowLoginModal(true)}>
+            <Cloud size={28} color="white" />
+            <div className="sos-text">
+              <div className="sos-title" style={{ color: 'white' }}>Zaloguj do chmury</div>
+              <div className="sos-subtitle" style={{ color: 'rgba(255,255,255,0.7)' }}>Zabezpiecz i synchronizuj dane online</div>
+            </div>
+          </button>
+        )}
+
         {/* Modals */}
+        {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} showToast={showToast} />}
+        {showRelapseModal && (
+          <RelapseModal 
+            onClose={() => setShowRelapseModal(false)} 
+            moneySavedDisplay={moneySavedDisplay}
+            daysSaved={daysSaved}
+            onReset={() => {
+              StorageService.setQuitDate(null);
+              setQuitDateLocal(null);
+              showToast('Licznik zresetowany. Powodzenia!');
+            }}
+          />
+        )}
+        
         {showBreathing && (
           <BreathingModal onClose={() => {
             setShowBreathing(false);
